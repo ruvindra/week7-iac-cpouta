@@ -393,9 +393,52 @@
   </ul>
 
   <h2>Experiment 2 &ndash; Drift</h2>
-  <div class="pending">
-    Not yet completed.
-  </div>
+
+  <h3>Part 1 &ndash; Delete a rule by hand</h3>
+  <p><strong>Prediction (written before running anything):</strong></p>
+  <ul>
+    <li>Deleting the HTTP rule in the web console will break the page immediately, since port 80 is how the floating IP is reached.</li>
+    <li><code>tofu plan</code> will <strong>notice</strong> the rule is missing and propose to <strong>re-create</strong> it, because this rule is a resource OpenTofu created and is tracked in its state file.</li>
+  </ul>
+  <div class="shot"><img src="images/exp2a_rules_before_delete.png" alt="Security group rules list before deleting HTTP rule"></div>
+  <p class="caption"><code>week7-web-sg</code> before the change: 5 rules, including <code>80 (HTTP)</code> from <code>0.0.0.0/0</code>.</p>
+  <div class="shot"><img src="images/exp2a_confirm_delete_http.png" alt="Confirm Delete Rule dialog for the HTTP rule"></div>
+  <p class="caption">Manually deleting the HTTP rule through Network &rarr; Security Groups &rarr; Manage Rules, bypassing OpenTofu entirely.</p>
+  <div class="shot"><img src="images/exp2a_page_timeout.png" alt="Browser showing ERR_CONNECTION_TIMED_OUT"></div>
+  <p class="caption">Opened the diary page in a private browser window: <code>ERR_CONNECTION_TIMED_OUT</code>. Port 80 is now blocked at the firewall, so the page cannot load even though the VM and Apache are both still running fine.</p>
+  <div class="shot"><img src="images/exp2a_plan_recreate.png" alt="tofu plan showing http rule will be created again"></div>
+  <p class="caption"><code>tofu plan</code>: <code>openstack_networking_secgroup_rule_v2.http will be created</code>, <code>Plan: 1 to add, 0 to change, 0 to destroy.</code> Matches the prediction &mdash; OpenTofu detected the drift straight away.</p>
+  <div class="shot"><img src="images/exp2a_apply_restored.png" alt="tofu apply restoring the http rule"></div>
+  <p class="caption"><code>tofu apply</code>: <code>Apply complete! Resources: 1 added, 0 changed, 0 destroyed.</code> The HTTP rule exists again with a brand-new rule ID.</p>
+  <div class="shot"><img src="images/exp2a_page_restored.png" alt="Diary page loading again after the rule was restored"></div>
+  <p class="caption">Page loads again immediately &mdash; no VM replacement was needed, since nothing about the instance itself ever changed.</p>
+  <p><strong>Explanation:</strong></p>
+  <ul>
+    <li>OpenTofu's state file records every resource it created, including this exact security group rule, by ID. When <code>tofu plan</code> refreshes state against the real infrastructure and finds that ID no longer exists in OpenStack, it treats this the same as any other missing resource: something declared in code is absent from reality, so it proposes to create it again.</li>
+    <li>This is configuration drift in its simplest form &mdash; a manual, out-of-band change (deleting a rule through the console, "ClickOps") that silently diverges the real infrastructure from what the code says it should be, exactly as described in Part A Q3.</li>
+  </ul>
+
+  <h3>Part 2 &ndash; Add an untracked rule by hand</h3>
+  <p><strong>Prediction (written before running anything):</strong></p>
+  <ul>
+    <li><code>tofu plan</code> will say <strong>"No changes"</strong> and will <strong>not</strong> propose removing the new rule, unlike Part 1.</li>
+    <li>Reasoning: OpenTofu only compares resources it knows about (declared in code, tracked in state) against reality. A rule added entirely outside that workflow was never declared, so it has nothing to compare it to and no reason to flag it.</li>
+  </ul>
+  <div class="shot"><img src="images/exp2b_rule_added_confirm.png" alt="Add Rule dialog filled in for TCP 8080 and the resulting rule list"></div>
+  <p class="caption">Added a Custom TCP Rule, Ingress, port <code>8080</code>, CIDR <code>0.0.0.0/0</code> through the console. The security group now shows 6 rules, with the new one not declared anywhere in <code>main.tf</code>.</p>
+  <div class="shot"><img src="images/tofu_plan_top.png" alt="tofu plan refreshing state"></div>
+  <p class="caption"><code>tofu plan</code> refreshes exactly the 9 resources OpenTofu knows about (keypair, secgroup, 3 rules &ndash; ssh/http/https, port, floating IP, instance, network data). The port 8080 rule never appears in this list at all.</p>
+  <p class="caption"><code>No changes. Your infrastructure matches the configuration.</code> &mdash; confirms the prediction exactly.</p>
+  <div class="shot"><img src="images/exp2b_rule_deleted.png" alt="Security group rules list after deleting the manual 8080 rule"></div>
+  <p class="caption">Cleaned up afterwards by deleting the port 8080 rule manually, back to the original 5 rules.</p>
+  <div class="shot"><img src="images/exp2b_plan_confirm_clean.png" alt="tofu plan confirming no changes after cleanup"></div>
+  <p class="caption"><code>tofu plan</code> still reports <code>No changes</code> &mdash; adding or removing this rule never touched OpenTofu's state either way.</p>
+  <p><strong>Explanation &ndash; why Part 1 and Part 2 behave differently:</strong></p>
+  <ul>
+    <li><strong>Part 1 (delete a tracked rule):</strong> the rule existed in OpenTofu's state. Removing it from reality creates a mismatch between state and reality that OpenTofu can see and fix.</li>
+    <li><strong>Part 2 (add an untracked rule):</strong> the rule never existed in OpenTofu's state, because OpenTofu never created it. Drift detection is a one-directional comparison &mdash; <em>state &rarr; reality</em>, not <em>reality &rarr; state</em> &mdash; so a resource created completely outside the code is invisible to <code>tofu plan</code> until it is explicitly imported (e.g. with <code>tofu import</code>).</li>
+    <li>This is exactly the "blind spot" described in Part A Q3: an IaC tool can only compare against resources it already manages.</li>
+  </ul>
 
   <h2>Experiment 3 &ndash; Destroy and Re-create</h2>
   <div class="pending">
