@@ -3,33 +3,20 @@
 package_update: true
 packages:
   - apache2
+  - git
 
 write_files:
-  - path: /var/www/html/index.html
+  - path: /var/www/html/status.txt
     owner: root:root
     permissions: '0644'
     content: |
-      <!DOCTYPE html>
-      <html lang="en">
-      <head>
-        <meta charset="UTF-8">
-        <title>${student_name} - Week 7 OpenTofu</title>
-        <style>
-          body { font-family: Arial, sans-serif; background:#1b2a4a; color:#fff;
-                 display:flex; align-items:center; justify-content:center; height:100vh; margin:0; }
-          .card { background:#223562; padding:2rem 3rem; border-radius:10px; text-align:center; }
-          h1 { margin-top:0; }
-        </style>
-      </head>
-      <body>
-        <div class="card">
-          <h1>${student_name}</h1>
-          <p>${page_message}</p>
-          <p><small>Deployed with OpenTofu on CSC cPouta</small></p>
-        </div>
-      </body>
-      </html>
+      ${student_name}
+      ${page_message}
 
 runcmd:
+  - rm -rf /tmp/week7-site
+  - git clone --depth 1 https://github.com/ruvindra/week7-iac-cpouta.git /tmp/week7-site
+  - rm -f /var/www/html/index.html
+  - cp -r /tmp/week7-site/index.html /tmp/week7-site/images /var/www/html/
   - systemctl enable apache2
   - systemctl restart apache2
