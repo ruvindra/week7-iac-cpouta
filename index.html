@@ -441,9 +441,41 @@
   </ul>
 
   <h2>Experiment 3 &ndash; Destroy and Re-create</h2>
-  <div class="pending">
-    Not yet completed.
-  </div>
+  <p><strong>Prediction (written before running anything):</strong></p>
+  <ul>
+    <li><strong>How many resources, and will it touch the project network?</strong> All 8 resources OpenTofu created (keypair, security group, 3 rules, port, floating IP, instance) will be destroyed. The project network will <strong>not</strong> be touched, because it's only looked up with a <code>data</code> source &mdash; OpenTofu never created it, so it has no authority to delete it.</li>
+    <li><strong>Destroy order:</strong> dependent resources first, the things everything else relies on last &mdash; so the security group rules and the instance should go before the security group itself, since the group can't be deleted while rules still reference it.</li>
+    <li><strong>Floating IP after re-apply:</strong> this time the floating IP <em>resource itself</em> is being destroyed, not just the instance, so the address will most likely be <strong>different</strong> after <code>tofu apply</code> &mdash; unlike Experiments 1 and 2, where the floating IP was never touched.</li>
+  </ul>
+
+  <div class="shot"><img src="images/exp3_destroy_plan.png" alt="tofu destroy refreshing state before destroying"></div>
+  <div class="shot"><img src="images/exp3_destroy_complete.png" alt="tofu destroy complete, 8 resources destroyed"></div>
+  <p class="caption"><code>tofu destroy</code>: <code>Destroy complete! Resources: 8 destroyed.</code> The real order from the output:</p>
+  <ul>
+    <li><strong>First wave (parallel):</strong> floating IP, all 3 security group rules (ssh/http/https), and the instance &mdash; none of these have anything left depending on them, so OpenTofu tears them down together. The instance takes the longest (5s), the rest finish in 1&ndash;2s.</li>
+    <li><strong>Second wave:</strong> the keypair and the port &mdash; the port couldn't be removed earlier because the instance was still attached to it.</li>
+    <li><strong>Last:</strong> the security group itself &mdash; it can only be deleted once every rule referencing it is already gone.</li>
+  </ul>
+  <p class="caption">Notice <code>data.openstack_networking_network_v2.project</code> only appears as <em>"Reading..."</em> at the very top &mdash; it is never destroyed. Confirms the prediction: a <code>data</code> source is a read-only lookup, not a managed resource, so OpenTofu has no destroy authority over it. The project network (and the untouched Week 1 VM sitting on it) survive completely.</p>
+
+  <div class="shot"><img src="images/exp3_old_ip_dead.png" alt="Old floating IP timing out after destroy"></div>
+  <p class="caption">The old address, <code>86.50.20.67</code>, now times out &mdash; the floating IP resource that used to answer there no longer exists.</p>
+
+  <div class="shot"><img src="images/exp3_apply_plan.png" alt="tofu apply creating all resources from scratch"></div>
+  <div class="shot"><img src="images/exp3_apply_complete.png" alt="tofu apply complete, 8 resources added, new floating IP"></div>
+  <p class="caption"><code>tofu apply</code>: <code>Apply complete! Resources: 8 added, 0 changed, 0 destroyed.</code> New outputs: <code>floating_ip = "86.50.20.250"</code> &mdash; a <strong>different</strong> address from before, exactly as predicted.</p>
+
+  <div class="shot"><img src="images/exp3_page_new_ip.png" alt="Diary page loading at the new floating IP"></div>
+  <p class="caption">The full diary loads again at the new address, <code>http://86.50.20.250/</code> &mdash; same content, new IP, with no manual steps beyond <code>tofu apply</code>.</p>
+
+  <p><strong>Explanation:</strong></p>
+  <ul>
+    <li><strong>Why the destroy order was what it was:</strong> OpenTofu builds a dependency graph from the resource references in <code>main.tf</code> (e.g. the security group rules reference <code>openstack_networking_secgroup_v2.web.id</code>, the instance references the port and the security group). On destroy, it works backwards through that graph &mdash; a resource can only be destroyed once nothing still depends on it, which is exactly why the rules and instance went first and the security group went last.</li>
+    <li><strong>Why the project network survived:</strong> it's declared as <code>data "openstack_networking_network_v2"</code>, a read-only lookup of something that already existed before this project ever ran. OpenTofu's state only tracks resources it is responsible for creating and destroying; a data source is explicitly outside that contract.</li>
+    <li><strong>Why the IP changed this time, when it didn't in Experiments 1/2:</strong> in those experiments only the <em>instance</em> (attached to the port) was replaced, while <code>openstack_networking_floatingip_v2.web</code> itself was left alone, so the address never moved. Here the floating IP resource was destroyed along with everything else, releasing it back to cPouta's shared pool. When it was created again, OpenStack had no reason to hand back the exact same address &mdash; it just allocated the next one available.</li>
+    <li><strong>Why a changing IP matters less with an output, and what would be needed if it had to stay fixed:</strong> because <code>outputs.tf</code> prints the current <code>floating_ip</code>/<code>url</code> straight after every <code>apply</code>, there's never any guesswork about the current address &mdash; it's always right there in the terminal. If the address genuinely had to stay fixed (e.g. for a DNS record or a published documentation link), cPouta would need a reserved/static floating IP tracked by its own ID in Terraform/OpenTofu, re-associated to the new port, rather than relying on a freshly-allocated one.</li>
+    <li><strong>Rebuild time vs. Week 1:</strong> the entire destroy-then-apply cycle here took under a minute of actual command time (destroy ~5s wall-clock for the slowest resource, apply ~13s for the instance, plus cloud-init finishing in the background). In Week 1, creating the same end result meant manually clicking through the image/flavor/key pair/security group/floating IP screens and then SSHing in to install Apache by hand &mdash; several minutes of manual, error-prone steps every single time. Here it's one command, and it's exactly repeatable.</li>
+  </ul>
 </section>
 
 </main>
