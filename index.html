@@ -142,6 +142,7 @@
   <div class="toc">
     <a href="#parta">Part A &ndash; Questions</a>
     <a href="#partb">Part B &ndash; Hands-On</a>
+    <a href="#experiments">Experiments</a>
   </div>
 </header>
 
@@ -339,6 +340,68 @@
 
 </section>
 
+<section id="experiments">
+  <h2>Experiment 1 &ndash; Change</h2>
+  <p>
+    Before this experiment, <code>cloud-init.yaml</code> was extended to also write a small separate
+    <code>/var/www/html/status.txt</code> file from <code>student_name</code>/<code>page_message</code>,
+    independent of the diary page itself &mdash; this keeps those two variables meaningful to test without
+    touching the diary's own design.
+  </p>
+
+  <h3>Option A &ndash; Change the page text</h3>
+  <p><strong>Prediction (written before running anything):</strong></p>
+  <ul>
+    <li>The VM will be <strong>destroyed and re-created</strong>, not updated in place, because <code>page_message</code> is baked into <code>user_data</code> via <code>templatefile()</code>, and changing <code>user_data</code> is something OpenStack cannot apply to a running instance.</li>
+    <li>The public IP will <strong>not</strong> change, since the floating IP is a separate resource attached to the port, not to the instance directly.</li>
+  </ul>
+  <div class="shot"><img src="images/exp1a_tfvars_change.png" alt="terraform.tfvars with changed page_message"></div>
+  <p class="caption">Changed <code>page_message</code> in <code>terraform.tfvars</code> to "Week 7 experiment: changed the page text!".</p>
+  <div class="shot"><img src="images/exp1a_plan_summary.png" alt="tofu plan showing instance must be replaced"></div>
+  <p class="caption"><code>tofu plan</code>: <code>openstack_compute_instance_v2.web must be replaced</code>, <code>Plan: 1 to add, 0 to change, 1 to destroy.</code></p>
+  <div class="shot"><img src="images/exp1a_plan_userdata.png" alt="tofu plan showing user_data forces replacement"></div>
+  <p class="caption">The line that explains why: <code>user_data = "..." -&gt; "..." # forces replacement</code>.</p>
+  <div class="shot"><img src="images/exp1a_apply_complete.png" alt="tofu apply complete, same floating IP"></div>
+  <p class="caption"><code>Apply complete! Resources: 1 added, 0 changed, 1 destroyed.</code> Floating IP unchanged: <code>86.50.20.67</code>.</p>
+  <div class="shot"><img src="images/exp1a_status_result.png" alt="status.txt showing the new message"></div>
+  <p class="caption"><code>status.txt</code> now shows the new message &mdash; confirming the new VM actually booted with the updated <code>user_data</code>.</p>
+  <p><strong>Explanation:</strong></p>
+  <ul>
+    <li><strong>Which attribute caused it:</strong> <code>user_data</code>, shown with <code># forces replacement</code> in the plan.</li>
+    <li><strong>Why it can't be changed in place:</strong> cloud-init only runs once, during a VM's first boot. There is no mechanism to make OpenStack "re-run" it on a live instance, so the only way to apply new <code>user_data</code> is to destroy and recreate the VM.</li>
+    <li><strong>Why the IP behaved this way:</strong> the floating IP (<code>openstack_networking_floatingip_v2.web</code>) is attached to the <strong>port</strong>, not the instance. Since the port was untouched, the floating IP simply reattached to the new VM once it existed.</li>
+  </ul>
+
+  <h3>Option B &ndash; Allow HTTPS too</h3>
+  <p><strong>Prediction (written before running anything):</strong></p>
+  <ul>
+    <li>Only <strong>1 resource added, 0 changed, 0 destroyed</strong> &mdash; a new security group rule is an independent resource, unrelated to the VM's <code>user_data</code>.</li>
+    <li>The VM will <strong>not</strong> be affected at all.</li>
+  </ul>
+  <div class="shot"><img src="images/exp1b_main_tf_https.png" alt="main.tf with new https security group rule"></div>
+  <p class="caption">Added a new <code>openstack_networking_secgroup_rule_v2.https</code> resource opening TCP 443 from anywhere.</p>
+  <div class="shot"><img src="images/exp1b_plan_summary.png" alt="tofu plan showing only the https rule being created"></div>
+  <p class="caption"><code>tofu plan</code>: <code>Plan: 1 to add, 0 to change, 0 to destroy.</code> &mdash; matches the prediction exactly, and the VM does not appear in the plan at all.</p>
+  <div class="shot"><img src="images/exp1b_apply_complete.png" alt="tofu apply complete, only the rule created"></div>
+  <p class="caption"><code>Apply complete! Resources: 1 added, 0 changed, 0 destroyed.</code></p>
+  <div class="shot"><img src="images/exp1b_curl_fail.png" alt="curl to https failing to connect"></div>
+  <p class="caption"><code>curl -k https://86.50.20.67</code> &rarr; <code>Failed to connect ... Could not connect to server</code>.</p>
+  <p><strong>Explanation:</strong></p>
+  <ul>
+    <li><strong>How this differs from Option A:</strong> Option A changed <code>user_data</code>, which forced a full VM replace. Option B only added a security group rule &mdash; a firewall-level change enforced by the network layer, completely independent of the instance's boot configuration, so OpenStack applied it instantly without touching the VM.</li>
+    <li><strong>Does the page work over HTTPS?</strong> No. Opening port 443 at the firewall only means traffic on that port is no longer blocked &mdash; it does not mean anything is listening on it. Apache was only configured by cloud-init to listen on port 80, with no TLS virtual host and no certificate, so the connection fails at the TCP level before ever reaching an application.</li>
+  </ul>
+
+  <h2>Experiment 2 &ndash; Drift</h2>
+  <div class="pending">
+    Not yet completed.
+  </div>
+
+  <h2>Experiment 3 &ndash; Destroy and Re-create</h2>
+  <div class="pending">
+    Not yet completed.
+  </div>
+</section>
 
 </main>
 
