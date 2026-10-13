@@ -1,0 +1,350 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Cloud Services - Week 7 Learning Diary</title>
+<style>
+  :root {
+    --bg: #0f1b33;
+    --panel: #16233f;
+    --panel-2: #1b2a4a;
+    --accent: #4f8ef7;
+    --accent-soft: #2a3f66;
+    --text: #e8edf7;
+    --muted: #9fb0cc;
+    --code-bg: #0b1428;
+    --border: #253655;
+    --ok: #4ade80;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, "Segoe UI", Arial, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.6;
+  }
+  header {
+    background: linear-gradient(135deg, var(--panel-2), #223562);
+    padding: 2.5rem 2rem;
+    border-bottom: 1px solid var(--border);
+  }
+  header h1 { margin: 0 0 0.3rem; font-size: 2rem; }
+  header p.subtitle { margin: 0; color: var(--muted); font-size: 1.05rem; }
+  .meta {
+    margin-top: 1.2rem;
+    background: rgba(255,255,255,0.05);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 1rem 1.2rem;
+    font-size: 0.95rem;
+    display: grid;
+    gap: 0.3rem;
+  }
+  .meta a { color: #8ab4ff; }
+  main { max-width: 920px; margin: 0 auto; padding: 2rem; }
+  section {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 1.8rem;
+    margin-bottom: 1.8rem;
+  }
+  h2 {
+    font-size: 1.4rem;
+    border-bottom: 2px solid var(--accent-soft);
+    padding-bottom: 0.5rem;
+    margin-top: 0;
+  }
+  h3 { font-size: 1.15rem; color: #cfe0ff; }
+  .question { font-weight: 600; color: #fff; margin-top: 1.6rem; }
+  .sources { font-size: 0.9rem; color: var(--muted); margin-top: 0.6rem; }
+  .sources a { color: #8ab4ff; }
+  code, pre {
+    background: var(--code-bg);
+    border-radius: 6px;
+    font-family: "SFMono-Regular", Consolas, Menlo, monospace;
+  }
+  code { padding: 0.15rem 0.4rem; font-size: 0.9em; }
+  pre {
+    padding: 1rem;
+    overflow-x: auto;
+    border: 1px solid var(--border);
+    font-size: 0.85rem;
+  }
+  .step {
+    border-left: 3px solid var(--accent);
+    padding-left: 1rem;
+    margin: 1.6rem 0;
+  }
+  .step h3 { margin-bottom: 0.3rem; }
+  .shot {
+    margin: 0.8rem 0 0.4rem;
+  }
+  .shot img {
+    max-width: 100%;
+    border-radius: 6px;
+    border: 1px solid var(--border);
+    display: block;
+  }
+  .caption {
+    font-size: 0.88rem;
+    color: var(--muted);
+    margin-top: 0.4rem;
+    font-style: italic;
+  }
+  .badge {
+    display: inline-block;
+    background: var(--accent-soft);
+    color: #cfe0ff;
+    border-radius: 999px;
+    padding: 0.15rem 0.7rem;
+    font-size: 0.8rem;
+    margin-left: 0.5rem;
+  }
+  .pending {
+    background: rgba(255, 196, 0, 0.08);
+    border: 1px dashed #c9a227;
+    border-radius: 8px;
+    padding: 1rem;
+    color: #e8d08a;
+    font-size: 0.95rem;
+  }
+  footer {
+    text-align: center;
+    color: var(--muted);
+    padding: 2rem;
+    font-size: 0.85rem;
+  }
+  .toc { display: flex; flex-wrap: wrap; gap: 0.6rem; margin-top: 1rem; }
+  .toc a {
+    background: var(--accent-soft);
+    color: #cfe0ff;
+    text-decoration: none;
+    padding: 0.4rem 0.9rem;
+    border-radius: 6px;
+    font-size: 0.9rem;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Cloud Services &ndash; Week 7</h1>
+  <p class="subtitle">Rebuilding my Week 1 VM as Code with OpenTofu on CSC cPouta</p>
+  <div class="meta">
+    <div><strong>Name:</strong> Kaluthanthrige Dona Ruvindra Nimshani</div>
+    <div><strong>Email:</strong> rkalutha25@students.oamk.fi</div>
+    <div><strong>Group:</strong> DIN25SP</div>
+    <div><strong>Repository:</strong> <a href="https://github.com/ruvindra/week7-iac-cpouta">github.com/ruvindra/week7-iac-cpouta</a></div>
+  </div>
+  <div class="toc">
+    <a href="#parta">Part A &ndash; Questions</a>
+    <a href="#partb">Part B &ndash; Hands-On</a>
+  </div>
+</header>
+
+<main>
+
+<section id="intro">
+  <h2>Introduction</h2>
+  <p>
+    In Week 1 I created a VM by hand in the cPouta web console: clicking through
+    the image, flavor, key pair, security group and floating IP screens, then
+    installing Apache over SSH. This week's assignment was to rebuild that same
+    result using Infrastructure as Code &mdash; OpenTofu describing every resource
+    in files, and cloud-init configuring the server automatically on first boot,
+    with no manual SSH setup involved.
+  </p>
+</section>
+
+<section id="parta">
+  <h2>Part A &ndash; Infrastructure as Code Questions</h2>
+
+  <p class="question">1. Explain the difference between declarative and imperative infrastructure automation. What does idempotency mean, and why is it important?</p>
+  <p>Imperative automation means writing an explicit, ordered sequence of steps to reach a result, you’re responsible for checking state and sequencing each action. Declarative automation means describing the desired end state and letting the tool figure out how to get there, comparing what’s declared against what exists and applying only the difference. Terraform, Kubernetes, and Ansible’s resource modules are declarative; shell scripts and traditional Ansible playbooks are imperative.</p>
+  <p>The key practical difference: if an imperative script fails halfway through, the system is left in an inconsistent state with no built-in recovery. A declarative tool can simply be re-run, since it only applies what’s still missing.</p>
+  <p>Idempotency means applying the same configuration multiple times produces the same result as applying it once, with no duplicate resources or unintended side effects. If the environment already matches the desired state, nothing happens; if it’s drifted, only the necessary changes are applied.</p>
+  <p>It matters because it makes automation safe to retry after a failure, prevents duplicate resources from re-runs, corrects configuration drift automatically, and removes the need to manually audit existing state before deploying.</p>
+  <p class="sources">
+    Sources:
+    <a href="https://opsmill.com/blog/declarative-vs-imperative-automation/">https://opsmill.com/blog/declarative-vs-imperative-automation/ </a>,
+    <a href="https://sailor.sh/blog/terraform-infrastructure-as-code-concepts-declarative-imperative/">https://sailor.sh/blog/terraform-infrastructure-as-code-concepts-declarative-imperative/</a>,
+    <a href="https://www.automq.com/blog/infrastructure-as-code-iac-vs-traditional-infrastructure-management">https://www.automq.com/blog/infrastructure-as-code-iac-vs-traditional-infrastructure-management</a>
+  </p>
+
+  <p class="question">2. Why was OpenTofu created? Compare Terraform and OpenTofu — would the choice between them matter to you as a developer, or to a company?</p>
+  <p>In August 2023, HashiCorp changed Terraform’s license from the open-source MPL 2.0 to the more restrictive Business Source License, limiting how competitors and commercial platforms could use the code. This broke trust with many developers and vendors, and within weeks a coalition forked the last MPL-licensed version into OpenTofu, donating it to the Linux Foundation, where it is now also part of the CNCF and governed by a multi-company steering committee rather than one vendor. The move gained more weight after IBM acquired HashiCorp in 2025, making OpenTofu’s neutral governance even more appealing to organizations wary of depending on a single company’s roadmap.</p>
+  <p>Technically, the tools remain very close: both use the same HCL syntax, workflow, and compatible state format, making OpenTofu largely a drop-in replacement. They have started to diverge, though, OpenTofu has shipped native state encryption and earlier variable evaluation, while Terraform concentrates its value in the commercial HCP Terraform platform, with SSO, audit logs, and official vendor support.</p>
+  <p>Whether this matters depends on who’s asking. For a developer, the difference is mostly theoretical, learning one transfers almost directly to the other. For a company, it matters more: a business building a commercial product faces real legal exposure under Terraform’s BSL, making OpenTofu the safer license choice, while a regulated enterprise like a bank or hospital may prefer Terraform for its commercial support and compliance tooling.</p>
+  <p>In short, OpenTofu exists because of a licensing decision many saw as a betrayal of Terraform’s open-source roots. The real choice today is less about code quality, since the two are nearly identical there, and more about licensing risk and governance preference.</p>
+  <p class="sources">
+    Sources:
+    <a href="https://devsecops.ae/opentofu-vs-terraform/">https://devsecops.ae/opentofu-vs-terraform/</a>,
+    <a href="https://platformengineering.org/blog/terraform-vs-opentofu-iac-tool">https://platformengineering.org/blog/terraform-vs-opentofu-iac-tool</a>
+  </p>
+
+  <p class="question">3. What is configuration drift, how does it happen, and how does an IaC tool detect it?</p>
+  <p>Configuration drift is the gradual, unintended divergence between a system’s actual, running state and the baseline it was meant to match, whether that baseline is documented manually or defined in version-controlled code. As a system is used and modified over time, small undocumented changes accumulate, and eventually the live environment no longer reflects what engineers believe it looks like. This gap matters because it quietly undermines security, compliance, and performance, often without anyone noticing until something breaks or an audit fails.</p>
+  <p>Drift most commonly happens through manual, out-of-band changes. An engineer applies a quick fix directly through a cloud console or CLI during an incident, perhaps widening a firewall rule or bumping up a server’s resources, intending to update the proper configuration later but never does. This pattern, sometimes called “ClickOps,” accounts for the large majority of drift cases in practice. Beyond manual fixes, drift also creeps in through automation operating outside the intended workflow, such as a legacy script or monitoring tool making changes the infrastructure-as-code (IaC) system never sees; through cloud providers quietly updating default settings or service behavior on their end; and through problems with the IaC tooling itself, like a corrupted or outdated state file, or two overlapping configurations managed by different teams stepping on each other. A well-known real-world case is the 2020 Twilio breach, where a drifted S3 bucket permission, originally changed as part of a fix, went undetected for years before attackers exploited it.</p>
+  <p>IaC tools detect drift by continuously comparing two things: the desired state declared in version-controlled configuration files, and the actual state of resources running in the cloud. Terraform, for example, maintains a state file that maps each piece of code to the real resource it created. When a check runs, typically via terraform plan, the tool queries the cloud provider’s API to refresh its understanding of what currently exists, then compares those live properties against what the code specifies. Any mismatch, say a security group rule changed manually in the console, is surfaced as a proposed change before anything is actually applied, giving the team visibility into exactly what drifted and why. Many teams schedule this comparison regularly or build it into CI/CD pipelines, so drift is caught and flagged automatically rather than discovered by accident weeks later.</p>
+  <p>It’s worth noting this detection has a blind spot: a tool can only compare against resources it already manages, so anything created entirely outside the IaC workflow stays invisible until it’s explicitly brought under management, for instance with terraform import.</p>
+  <p class="sources">
+    Sources:
+    <a href="https://www.ibm.com/think/topics/configuration-drift">https://www.ibm.com/think/topics/configuration-drift</a>,
+    <a href="https://snyk.io/articles/infrastructure-as-code-iac/detect-prevent-configuration-drift/">https://snyk.io/articles/infrastructure-as-code-iac/detect-prevent-configuration-drift/</a>
+  </p>
+
+  <p class="question">4. Explain the difference between provisioning and configuration management. Where do cloud-init and Ansible fit in?</p>
+  <p>Provisioning and configuration management are two distinct phases in an infrastructure’s lifecycle. Provisioning is the act of creating raw infrastructure from scratch, launching virtual machines, setting up networks, subnets, firewalls, and databases. It gives you the “blank canvas” server or environment. Tools like Terraform and CloudFormation handle this by provisioning the servers themselves and leaving the job of configuring them to other tools.</p>
+  <p>Configuration management, by contrast, is the act of installing and maintaining software and system state once that infrastructure exists, installing packages, creating user accounts, managing security patches, and preventing configuration drift where servers slowly diverge from one another. Tools like Ansible, Chef, and Puppet specialize in this.</p>
+  <p>Cloud-init is an industry-standard tool for first-boot customization. It bridges the gap between raw provisioning and configuration management: when a provisioning tool creates a new VM, cloud-init runs once during that first boot cycle, injecting SSH keys, setting the hostname, configuring basic networking, creating initial user accounts, and running simple setup scripts. It’s deliberately lightweight and “just-in-time,” it doesn’t run continuously or check ongoing server health, and using it for complex, evolving software deployments quickly becomes unmanageable.</p>
+  <p>Ansible is primarily a configuration management tool. It connects to already-running infrastructure, typically over SSH, to handle ongoing, more complex software setup: deploying applications, updating configuration across many servers at once, and keeping systems in a consistent state over time. Ansible can also provision infrastructure through cloud modules, but that’s not its core design strength, Terraform remains the better fit for actual resource provisioning.</p>
+  <p>A common pipeline handoff looks like this: a provisioning tool (Terraform) launches a blank VM, cloud-init runs at first boot to inject SSH keys and do minimal setup, and Ansible then connects over that SSH access to install software, deploy application code, and configure the server fully. Each tool hands off to the next at the point where its own strengths run out</p>
+  <p class="sources">
+    Sources:
+    <a href="https://www.gruntwork.io/blog/why-we-use-terraform-and-not-chef-puppet-ansible-saltstack-or-cloudformation">https://www.gruntwork.io/blog/why-we-use-terraform-and-not-chef-puppet-ansible-saltstack-or-cloudformation</a>,
+    <a href="https://devopscube.com/infrastructure-as-code-configuration-management/">https://devopscube.com/infrastructure-as-code-configuration-management/</a>
+  </p>
+</section>
+
+<section id="partb">
+  <h2>Part B &ndash; Rebuilding the Week 1 VM with OpenTofu</h2>
+  <p>
+    The project lives entirely in six files plus the usual Git housekeeping. <code>versions.tf</code> and
+    <code>main.tf</code> were given by the assignment; <code>variables.tf</code>, <code>cloud-init.yaml</code>,
+    <code>outputs.tf</code>, and the <code>terraform.tfvars</code> pair were written to meet the stated
+    requirements.
+  </p>
+
+  <h3>How the resources reference each other</h3>
+  <ul>
+    <li><strong>Project network (data source):</strong> <code>data.openstack_networking_network_v2.project</code> looks up the existing CSC network by name &mdash; it is read, not created.</li>
+    <li><strong>Key pair:</strong> <code>openstack_compute_keypair_v2.web</code> uploads only my public key, read from the path in <code>ssh_public_key_path</code>.</li>
+    <li><strong>Security group + rules:</strong> <code>openstack_networking_secgroup_v2.web</code> is the firewall; the two rule resources attach to it by its <code>id</code>, restricting SSH to <code>var.ssh_allowed_cidr</code> and opening HTTP to everyone.</li>
+    <li><strong>Network port:</strong> <code>openstack_networking_port_v2.web</code> sits in the project network and references the security group's id so the port is protected by those rules.</li>
+    <li><strong>VM:</strong> <code>openstack_compute_instance_v2.web</code> references the port and the key pair, and renders <code>cloud-init.yaml</code> through <code>templatefile()</code> as its <code>user_data</code>.</li>
+    <li><strong>Floating IP:</strong> <code>openstack_networking_floatingip_v2.web</code> depends on the port's id &mdash; OpenTofu uses this reference to know the floating IP must be created/attached after the port exists.</li>
+  </ul>
+
+  <h3>Why some variables have no default</h3>
+  <p>
+    <code>project_network</code>, <code>ssh_allowed_cidr</code> and <code>student_name</code> are all
+    declared without a <code>default</code>. For <code>project_network</code> and <code>student_name</code>,
+    it's because the values are specific to me and shouldn't be silently guessed. For
+    <code>ssh_allowed_cidr</code> it matters even more: a stale or overly broad default (like
+    <code>0.0.0.0/0</code>) would quietly leave SSH open to the entire internet every time someone forgot to
+    override it. Forcing the value to be supplied every time, with a validation rule that rejects anything
+    that isn't a real CIDR block, makes that mistake much harder to make by accident.
+  </p>
+
+  <div class="step">
+    <h3>Step 2 &ndash; Install OpenTofu</h3>
+    <div class="shot"><img src="images/opentofu_install.png" alt="winget installing OpenTofu"></div>
+    <p class="caption">Installed with <code>winget install --exact --id=OpenTofu.Tofu</code> &mdash; v1.13.0.</p>
+  </div>
+
+  <div class="step">
+    <h3>Step 3 &ndash; Project folder and Git repo</h3>
+    <div class="shot"><img src="images/project_folder_git_init.png" alt="Creating the project folder and running git init"></div>
+    <p class="caption">Created <code>week7-iac-cpouta</code> and ran <code>git init</code>.</p>
+    <div class="shot"><img src="images/gitignore.png" alt=".gitignore contents"></div>
+    <p class="caption">Wrote <code>.gitignore</code> first, before any credential file existed in the folder.</p>
+    <div class="shot"><img src="images/gitignore_commit.png" alt="Committing the gitignore"></div>
+    <p class="caption">Committed the <code>.gitignore</code> on its own, so it was active before <code>clouds.yaml</code> was ever downloaded.</p>
+  </div>
+
+  <div class="step">
+    <h3>Step 4 &ndash; Application Credential</h3>
+    <div class="shot"><img src="images/app_credential_menu.png" alt="Identity menu, Application Credentials"></div>
+    <p class="caption">Identity &rarr; Application Credentials in the cPouta dashboard.</p>
+    <div class="shot"><img src="images/app_credential_form.png" alt="Create Application Credential form"></div>
+    <p class="caption">Named it <code>week7-tofu</code>, left Secret blank so one was generated, and did not tick Unrestricted.</p>
+    <p>
+      After downloading <code>clouds.yaml</code> into the project folder, <code>git status</code> confirmed it
+      did not appear as a trackable file &mdash; the <code>.gitignore</code> entry for <code>clouds.yaml</code>
+      was already working.
+    </p>
+  </div>
+
+  <div class="step">
+    <h3>Step 5 &ndash; SSH key pair</h3>
+    <div class="shot"><img src="images/ssh_keygen.png" alt="ssh-keygen output"></div>
+    <p class="caption"><code>ssh-keygen -t ed25519 -f ~/.ssh/week7_ed25519 -C "week7"</code> &mdash; only the fingerprint/randomart is shown here, never the private key itself.</p>
+  </div>
+
+  <div class="step">
+    <h3>Step 6 &ndash; Looking up values</h3>
+    <div class="shot"><img src="images/public_ip.png" alt="curl ifconfig.me/ip output"></div>
+    <p class="caption">Found my public IP with <code>curl https://ifconfig.me/ip</code>, converted to CIDR form (<code>/32</code>) for <code>ssh_allowed_cidr</code>.</p>
+  </div>
+
+  <div class="step">
+    <h3>Step 7 &ndash; Writing the code</h3>
+    <div class="shot"><img src="images/versions_tf.png" alt="versions.tf contents"></div>
+    <p class="caption"><code>versions.tf</code> &ndash; pins the OpenTofu and OpenStack provider versions, as given.</p>
+    <div class="shot"><img src="images/main_tf.png" alt="main.tf contents"></div>
+    <p class="caption"><code>main.tf</code> &ndash; the infrastructure resources, as given.</p>
+    <div class="shot"><img src="images/tofu_init.png" alt="tofu init output"></div>
+    <p class="caption"><code>tofu init</code> downloading the OpenStack provider plugin.</p>
+    <div class="shot"><img src="images/tofu_validate_errors.png" alt="tofu validate showing undeclared variable errors"></div>
+    <p class="caption">With only <code>versions.tf</code> and <code>main.tf</code> in place, <code>tofu validate</code> listed every undeclared variable &mdash; exactly the to-do list the guide describes.</p>
+    <div class="shot"><img src="images/variables_tf.png" alt="variables.tf contents"></div>
+    <p class="caption"><code>variables.tf</code> written to satisfy every reference, each with a description and type, plus the CIDR validation rule on <code>ssh_allowed_cidr</code>.</p>
+    <div class="shot"><img src="images/tofu_validate_cloudinit_error.png" alt="tofu validate showing missing cloud-init.yaml"></div>
+    <p class="caption">Next error: <code>templatefile()</code> couldn't find <code>cloud-init.yaml</code> yet &mdash; variables were now all declared correctly.</p>
+    <div class="shot"><img src="images/cloud_init_yaml.png" alt="cloud-init.yaml contents"></div>
+    <p class="caption"><code>cloud-init.yaml</code> &ndash; installs Apache, then writes my own <code>index.html</code>, then restarts Apache so my page (not the default page) is served.</p>
+    <div class="shot"><img src="images/tofu_validate_success.png" alt="tofu validate success"></div>
+    <p class="caption">All errors resolved &mdash; <code>Success! The configuration is valid.</code></p>
+    <div class="shot"><img src="images/outputs_tf.png" alt="outputs.tf contents"></div>
+    <p class="caption"><code>outputs.tf</code> &ndash; floating IP, full URL, and a ready-made SSH command, each with a description.</p>
+    <div class="shot"><img src="images/tfvars_example.png" alt="terraform.tfvars.example contents"></div>
+    <p class="caption"><code>terraform.tfvars.example</code> &ndash; placeholder values only, safe to commit.</p>
+    <div class="shot"><img src="images/tfvars_real.png" alt="terraform.tfvars contents"></div>
+    <p class="caption">My real <code>terraform.tfvars</code> &ndash; ignored by Git, never pushed.</p>
+    <div class="shot"><img src="images/tofu_fmt_validate.png" alt="tofu fmt and validate"></div>
+    <p class="caption">Final formatting pass and validation before moving to deploy.</p>
+    <div class="shot"><img src="images/folder_structure.png" alt="Final folder structure"></div>
+    <p class="caption">Final folder structure, matching what the guide expects.</p>
+  </div>
+
+  <div class="step">
+    <h3>Step 8 &ndash; Deploy</h3>
+    <p>
+      <strong>Prediction before running anything:</strong> counting the <code>resource</code> blocks in
+      <code>main.tf</code> (key pair, security group, two rules, port, VM, floating IP) gives 7. The
+      <code>data</code> block for the project network is a lookup, not a creation, so I expected
+      <strong>7 to add, 0 to change, 0 to destroy</strong>.
+    </p>
+    <div class="shot"><img src="images/tofu_plan_top.png" alt="tofu plan output, top"></div>
+    <div class="shot"><img src="images/tofu_plan_summary.png" alt="tofu plan summary line"></div>
+    <p class="caption"><code>tofu plan</code> matched the prediction exactly: <code>Plan: 7 to add, 0 to change, 0 to destroy.</code> The data source was read (visible as "Reading... / Read complete") but correctly did not count toward the total.</p>
+    <div class="shot"><img src="images/tofu_apply_start.png" alt="tofu apply starting"></div>
+    <div class="shot"><img src="images/tofu_apply_confirm.png" alt="tofu apply plan and yes prompt"></div>
+    <div class="shot"><img src="images/tofu_apply_complete.png" alt="tofu apply complete with outputs"></div>
+    <p class="caption"><code>Apply complete! Resources: 7 added, 0 changed, 0 destroyed.</code> All seven resources were created in under 20 seconds total &mdash; considerably faster than the manual Week 1 setup.</p>
+  </div>
+
+  <div class="step">
+    <h3>Step 9 &ndash; Checking the page works</h3>
+    <div class="shot"><img src="images/console_log.png" alt="Instance console log showing cloud-init finished"></div>
+    <p class="caption">Instance console log confirming <code>Cloud-init ... finished</code> and <code>Started The Apache HTTP Server</code>.</p>
+    <div class="shot"><img src="images/page_live.png" alt="Browser showing the deployed page"></div>
+    <p class="caption">The page is live at the floating IP, showing my name and message &mdash; not the Apache default page.</p>
+    <div class="shot"><img src="images/instances_list.png" alt="Compute Instances list showing week7-vm"></div>
+    <p class="caption"><code>week7-vm</code> appears under Compute &rarr; Instances with the <code>week7-</code> prefix, <code>standard.tiny</code> flavor, and the <code>week7-key</code> key pair &mdash; everything created by code, alongside my untouched Week 1 <code>cloudServices</code> VM.</p>
+  </div>
+
+</section>
+
+
+</main>
+
+<footer>
+  Cloud Services &ndash; OAMK &ndash; Week 7 &ndash; Kaluthanthrige Dona Ruvindra Nimshani
+</footer>
+
+</body>
+</html>
